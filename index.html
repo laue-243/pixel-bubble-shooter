@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Pixel Bubble Shooter</title>
+<style>
+body { background: #000; margin: 0; display: flex; justify-content: center; align-items: center; height: 100vh; image-rendering: pixelated; }
+canvas { border: 4px solid #333; image-rendering: pixelated; }
+</style>
+</head>
+<body>
+<canvas id="game" width="400" height="600"></canvas>
+<script>
+const canvas = document.getElementById('game');
+const ctx = canvas.getContext('2d');
+ctx.imageSmoothingEnabled = false;
+const colors = ['#f00','#0f0','#00f','#ff0','#f0f','#0ff'];
+let grid = [];
+let shooter = {angle: -Math.PI/2, color: colors[Math.floor(Math.random()*colors.length)]};
+let projectile = null;
+let score = 0;
+
+function initGrid() {
+  for (let y=0; y<8; y++) {
+    grid[y] = [];
+    for (let x=0; x<8; x++) {
+      grid[y][x] = Math.random() < 0.7 ? colors[Math.floor(Math.random()*colors.length)] : null;
+    }
+  }
+}
+initGrid();
+
+function draw() {
+  ctx.fillStyle = '#111';
+  ctx.fillRect(0,0,400,600);
+  for (let y=0; y<grid.length; y++) {
+    for (let x=0; x<grid[y].length; x++) {
+      if (grid[y][x]) {
+        ctx.fillStyle = grid[y][x];
+        ctx.beginPath();
+        ctx.arc(x*50+25, y*50+25, 20, 0, Math.PI*2);
+        ctx.fill();
+      }
+    }
+  }
+  if (projectile) {
+    ctx.fillStyle = projectile.color;
+    ctx.beginPath();
+    ctx.arc(projectile.x, projectile.y, 15, 0, Math.PI*2);
+    ctx.fill();
+  }
+  // Shooter
+  ctx.save();
+  ctx.translate(200, 550);
+  ctx.rotate(shooter.angle + Math.PI/2);
+  ctx.fillStyle = shooter.color;
+  ctx.fillRect(-10, -40, 20, 40);
+  ctx.restore();
+  ctx.fillStyle = '#fff';
+  ctx.font = '16px monospace';
+  ctx.fillText('Score: '+score, 10, 20);
+}
+
+function shoot() {
+  if (projectile) return;
+  projectile = {
+    x: 200, y: 550,
+    vx: Math.cos(shooter.angle) * 8,
+    vy: Math.sin(shooter.angle) * 8,
+    color: shooter.color
+  };
+  shooter.color = colors[Math.floor(Math.random()*colors.length)];
+}
+
+function loop() {
+  if (projectile) {
+    projectile.x += projectile.vx;
+    projectile.y += projectile.vy;
+    if (projectile.x < 20 || projectile.x > 380) projectile.vx *= -1;
+    if (projectile.y < 20) {
+      // Stick to grid (simplified)
+      const gx = Math.floor(projectile.x / 50);
+      const gy = Math.floor(projectile.y / 50);
+      if (gy >= 0 && gy < grid.length && gx >= 0 && gx < 8) {
+        grid[gy][gx] = projectile.color;
+        score += 10;
+        // Simple match check omitted for brevity
+      }
+      projectile = null;
+    }
+  }
+  draw();
+  requestAnimationFrame(loop);
+}
+
+canvas.addEventListener('mousemove', e => {
+  const rect = canvas.getBoundingClientRect();
+  const dx = e.clientX - rect.left - 200;
+  const dy = e.clientY - rect.top - 550;
+  shooter.angle = Math.atan2(dy, dx);
+  if (shooter.angle > -0.2) shooter.angle = -0.2;
+  if (shooter.angle < -Math.PI + 0.2) shooter.angle = -Math.PI + 0.2;
+});
+canvas.addEventListener('click', shoot);
+
+loop();
+</script>
+</body>
+</html>
